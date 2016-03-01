@@ -1,0 +1,27 @@
+{
+  "name": "opifer/revisions",
+  "description": "Keep revisions and drafts of Entity data",
+  "homepage": "https://github.com/Opifer/Revisions",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Opifer",
+      "homepage": "http://www.opifer.nl/"
+    }
+  ],
+  "require": {
+    "php": ">=5.4",
+    "doctrine/orm": "~2.4",
+    "doctrine/doctrine-bundle": "~1.2",
+  },
+  "require-dev": {
+    "phpunit/phpunit": "~4.2.0",
+    "mockery/mockery": "~0.9",
+    "symfony/phpunit-bridge": "~2.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "Opifer\\Revisions\\": "."
+    }
+  }
+}
