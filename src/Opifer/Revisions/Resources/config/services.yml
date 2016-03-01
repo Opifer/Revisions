@@ -1,0 +1,19 @@
+services:
+    opifer.revisions.annotation_reader:
+        class: Opifer\Revisions\Mapping\AnnotationReader
+
+    opifer.revisions.schema_listener:
+        class: Opifer\Revisions\EventListener\SchemaListener
+        arguments: ['@service_container', '@opifer.revisions.annotation_reader']
+        tags:
+            - { name: 'doctrine.event_subscriber' }
+
+    opifer.revisions.revision_listener:
+        class: Opifer\Revisions\EventListener\RevisionListener
+        arguments: ['@service_container', '@opifer.revisions.annotation_reader']
+        tags:
+            - { name: 'doctrine.event_subscriber', priority: 1000 }
+
+    opifer.revisions.revision_manager:
+        class: Opifer\Revisions\RevisionManager
+        arguments: ['@doctrine.orm.default_entity_manager', '@opifer.revisions.annotation_reader']

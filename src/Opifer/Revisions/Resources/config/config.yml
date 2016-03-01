@@ -1,0 +1,8 @@
+#doctrine:
+#    orm:
+#        mappings:
+#            OpiferRevisionsBundle:
+#                type:   revisions
+#                alias:  Opifer
+#                prefix: Opifer\Revisions\Entity
+#                dir:    '%kernel.root_dir%/../vendor/opifer/revisions/src/Opifer/Revisions/Entity'

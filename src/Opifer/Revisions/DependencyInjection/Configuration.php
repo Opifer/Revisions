@@ -17,8 +17,28 @@ class Configuration implements ConfigurationInterface
      */
     public function getConfigTreeBuilder()
     {
-        $treeBuilder = new TreeBuilder();
+        $builder = new TreeBuilder();
+        $builder->root('opifer_revisions')
+            ->addDefaultsIfNotSet()
+            ->children()
+                ->arrayNode('revision')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('class')
+                            ->isRequired()
+                        ->end()
+                        ->arrayNode('views')
+                            ->addDefaultsIfNotSet()
+                            ->children()
+                                ->scalarNode('index')->defaultValue('OpiferRevisionsBundle:Revision:index.html.twig')->end()
+                            ->end()
+                        ->end()
+                    ->end()
+                ->end()
+            ->end()
+        ;
 
-        return $treeBuilder;
+        return $builder;
     }
+
 }

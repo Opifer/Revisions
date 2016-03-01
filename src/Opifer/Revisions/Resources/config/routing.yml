@@ -1,0 +1,3 @@
+opifer_revisions_revision_index:
+    path: /revision
+    defaults: { _controller: OpiferRevisionsBundle:Revision:index }
