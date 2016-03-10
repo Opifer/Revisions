@@ -72,6 +72,9 @@ class RevisionListener implements EventSubscriber
     /** @var ContainerInterface */
     protected $container;
 
+    /** @var string */
+    protected $username;
+
     public function __construct(ContainerInterface $container, AnnotationReader $annotationReader)
     {
         $this->container = $container;
@@ -333,7 +336,7 @@ class RevisionListener implements EventSubscriber
                 'revisions',
                 array(
                     'timestamp' => date_create('now'),
-                    'username' => $this->getCurrentUsername(),
+                    'username' => $this->getUsername(),
                     'draft' => $this->draft,
                 ),
                 array(
@@ -695,9 +698,23 @@ class RevisionListener implements EventSubscriber
         return 'integer';
     }
 
-
-    protected function getCurrentUsername()
+    /**
+     * @return string
+     */
+    public function getUsername()
     {
-        return 'system';
+        return $this->username;
+    }
+
+    /**
+     * @param string $username
+     *
+     * @return RevisionListener
+     */
+    public function setUsername($username)
+    {
+        $this->username = $username;
+
+        return $this;
     }
 }
