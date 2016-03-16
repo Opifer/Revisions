@@ -23,5 +23,10 @@
     "psr-4": {
       "Opifer\\Revisions\\": "src/Opifer/Revisions"
     }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Opifer\\Revisions\\Tests\\": "tests/Opifer/Revisions/Tests"
+    }
   }
 }
