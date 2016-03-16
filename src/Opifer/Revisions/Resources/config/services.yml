@@ -1,6 +1,25 @@
 services:
+    opifer.revisions.request_listener:
+        class: Opifer\Revisions\EventListener\RequestListener
+        calls:
+            - [ setContainer, [ '@service_container' ] ]
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+
     opifer.revisions.annotation_reader:
         class: Opifer\Revisions\Mapping\AnnotationReader
+
+    opifer.revisions.schema_listener:
+        class: Opifer\Revisions\EventListener\SchemaListener
+        arguments: ['@service_container', '@opifer.revisions.annotation_reader']
+        tags:
+            - { name: 'doctrine.event_subscriber' }
+
+    opifer.revisions.revision_listener:
+        class: Opifer\Revisions\EventListener\RevisionListener
+        arguments: ['@service_container', '@opifer.revisions.annotation_reader']
+        tags:
+            - { name: 'doctrine.event_subscriber', priority: 0 }
 
     opifer.revisions.revision_manager:
         class: Opifer\Revisions\RevisionManager

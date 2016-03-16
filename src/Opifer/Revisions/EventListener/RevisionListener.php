@@ -75,6 +75,9 @@ class RevisionListener implements EventSubscriber
     /** @var string */
     protected $username;
 
+    /** @var array */
+    protected $insertDrafts = array();
+
     public function __construct(ContainerInterface $container, AnnotationReader $annotationReader)
     {
         $this->container = $container;
@@ -186,13 +189,16 @@ class RevisionListener implements EventSubscriber
 
             $processedEntities[] = $hash;
 
-            $this->extraUpdates[spl_object_hash($entity)] = $entity;
-
-            $persister = $this->uow->getEntityPersister(get_class($entity));
-            $this->updateData[spl_object_hash($entity)] =  $this->prepareUpdateData($persister, $entity);
-
             if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
                 $this->resetRevisedData($entity);
+            } else {
+                $this->extraUpdates[spl_object_hash($entity)] = $entity;
+
+                $persister = $this->uow->getEntityPersister(get_class($entity));
+                $this->updateData[spl_object_hash($entity)] =  $this->prepareUpdateData($persister, $entity);
+
+                $entityData = array_merge($this->getOriginalEntityData($entity), $this->uow->getEntityIdentifier($entity));
+                $this->saveRevisionEntityData($this->em->getClassMetadata(get_class($entity)), $entityData, 'DEL');
             }
         }
 
@@ -209,6 +215,7 @@ class RevisionListener implements EventSubscriber
             $this->updateData[spl_object_hash($entity)] =  $this->prepareUpdateData($persister, $entity);
 
             if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
+                $this->insertDrafts[spl_object_hash($entity)] = $entity;
                 $this->resetRevisedData($entity);
                 $this->uow->recomputeSingleEntityChangeSet($this->em->getClassMetadata(get_class($entity)), $entity);
             }
@@ -241,12 +248,6 @@ class RevisionListener implements EventSubscriber
             $meta = $em->getClassMetadata($className);
 
             $updateData = $this->updateData[spl_object_hash($entity)];
-
-            if (isset($this->revisionIds[spl_object_hash($entity)]) && $this->revisionIds[spl_object_hash($entity)] !== null) {
-                $this->revisionId = $this->revisionIds[spl_object_hash($entity)];
-            } else if ($this->revisionId !== null) {
-                $this->revisionIds[spl_object_hash($entity)] = $this->revisionId;
-            }
 
             if (! isset($updateData[$meta->table['name']]) || ! $updateData[$meta->table['name']]) {
                 continue;
@@ -308,6 +309,10 @@ class RevisionListener implements EventSubscriber
                 $this->em->getConnection()->executeQuery($sql, $params, $types);
             }
         }
+//
+//        foreach ($this->insertDrafts as $hash => $entity) {
+//            $this->em->detach($entity);
+//        }
     }
 
     /**
@@ -336,7 +341,7 @@ class RevisionListener implements EventSubscriber
                 'revisions',
                 array(
                     'timestamp' => date_create('now'),
-                    'username' => $this->getUsername(),
+                    'username' => $this->getUsername() ?: 'UNKNOWN',
                     'draft' => $this->draft,
                 ),
                 array(
@@ -429,9 +434,9 @@ class RevisionListener implements EventSubscriber
 
             $sql = "INSERT INTO " . $tableName . " (".implode(", ", $values);
             $sql .= ") VALUES (" . implode(", ", $placeholders) . ")";
-            $sql .= " ON DUPLICATE KEY UPDATE ";
-            array_walk($updates, function (&$value) { $value = sprintf("%s=VALUES(%s)", $value, $value); });
-            $sql .= implode(", ", $updates);
+//            $sql .= " ON DUPLICATE KEY UPDATE ";
+//            array_walk($updates, function (&$value) { $value = sprintf("%s=VALUES(%s)", $value, $value); });
+//            $sql .= implode(", ", $updates);
 
             $this->revisionSQL[$meta->name] = $sql;
         }
@@ -641,6 +646,10 @@ class RevisionListener implements EventSubscriber
         /** @var \ReflectionProperty[] $revisedProperties */
         $revisedProperties = $this->annotationReader->getRevisedProperties($object);
 
+        if (isset($this->insertDrafts[spl_object_hash($object)])) {
+            $object->setCreatedAt(null);
+        }
+
         foreach ($uow->getEntityChangeSet($object) as $field => $changes) {
             if (! key_exists($field, $revisedProperties)) {
                 continue;
@@ -659,17 +668,7 @@ class RevisionListener implements EventSubscriber
     {
         if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
             $this->draft = true;
-
-            if (property_exists($entity, 'revision')) {
-                $this->revisionId = ($entity->revision) ? $entity->revision : null;
-                $this->revisionIds[spl_object_hash($entity)] = ($entity->revision) ? $entity->revision : null;
-            }
         }
-    }
-
-    protected function hasRevisionInfo($entity)
-    {
-        return property_exists($entity, 'revision') && $entity->revision;
     }
 
     /**
@@ -716,5 +715,21 @@ class RevisionListener implements EventSubscriber
         $this->username = $username;
 
         return $this;
+    }
+
+    /**
+     * @return AnnotationReader
+     */
+    public function getAnnotationReader()
+    {
+        return $this->annotationReader;
+    }
+
+    /**
+     * @param AnnotationReader $annotationReader
+     */
+    public function setAnnotationReader($annotationReader)
+    {
+        $this->annotationReader = $annotationReader;
     }
 }

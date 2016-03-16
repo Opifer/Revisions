@@ -16,7 +16,7 @@ class Truck extends Vehicle
      * @var int
      *
      * @Revisions\Revised
-     * @ORM\Column(type="int", nullable=true)
+     * @ORM\Column(type="integer", nullable=true)
      */
     protected $maxLoad;
 }

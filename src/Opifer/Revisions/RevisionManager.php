@@ -53,7 +53,7 @@ class RevisionManager
      *
      * @return object
      */
-    public function revert($entity, $revision)
+    public function revert(&$entity, $revision)
     {
         /** @var ClassMetadataInfo $meta */
         $meta = $this->getClassMetadata(get_class($entity));

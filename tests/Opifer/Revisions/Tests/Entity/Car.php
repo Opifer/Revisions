@@ -19,4 +19,20 @@ class Car extends Vehicle
      * @Revisions\Revised
      */
     protected $seats;
+
+    /**
+     * @return int
+     */
+    public function getSeats()
+    {
+        return $this->seats;
+    }
+
+    /**
+     * @param int $seats
+     */
+    public function setSeats($seats)
+    {
+        $this->seats = $seats;
+    }
 }
