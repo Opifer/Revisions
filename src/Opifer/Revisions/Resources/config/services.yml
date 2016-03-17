@@ -19,7 +19,7 @@ services:
         class: Opifer\Revisions\EventListener\RevisionListener
         arguments: ['@service_container', '@opifer.revisions.annotation_reader']
         tags:
-            - { name: 'doctrine.event_subscriber', priority: 0 }
+            - { name: 'doctrine.event_subscriber', priority: 10 } # should handle events after gedmo timestample does
 
     opifer.revisions.revision_manager:
         class: Opifer\Revisions\RevisionManager

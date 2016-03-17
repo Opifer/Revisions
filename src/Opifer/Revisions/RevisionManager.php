@@ -126,9 +126,11 @@ class RevisionManager
      */
     public function getDraftRevision($entity)
     {
-        $data = $this->getRevisionData($entity, ['draft = :draft'], ['draft' => true], 1);
+        $currentRevision = $this->getCurrentRevision($entity);
+        $latestRevision = $this->getLatestRevision($entity);
 
-        return ($data) ? $data['revision_id'] : null;
+
+        return ($currentRevision < $latestRevision) ? $latestRevision : null;
     }
 
     public function setRevisionDraft($revision, $draft)
