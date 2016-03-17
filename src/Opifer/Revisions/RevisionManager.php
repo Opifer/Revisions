@@ -34,12 +34,33 @@ class RevisionManager
      *
      * @return bool
      */
-    public function findLatestRevision($entity)
+    public function getLatestRevision($entity)
     {
-        $latest = $this->getRevisionData($entity, array(), 1);
+        $latest = $this->getRevisionData($entity, [], [], 1);
 
         if ($latest) {
             return $latest['revision_id'];
+        }
+
+        return false;
+    }
+
+
+    public function getCurrentRevision($entity)
+    {
+        $criteria = array();
+        $params = array();
+
+        // Exclude "future" draft revisions
+        if ($this->annotationReader->isDraft($entity)) {
+            $criteria[] = 'updated_at <= :updatedAt';
+            $params['updatedAt'] = $entity->getUpdatedAt() ? $entity->getUpdatedAt()->format("Y-m-d H:i:s") : null;
+        }
+
+        $current = $this->getRevisionData($entity, $criteria, $params, 1);
+
+        if ($current) {
+            return $current['revision_id'];
         }
 
         return false;
@@ -53,12 +74,12 @@ class RevisionManager
      *
      * @return object
      */
-    public function revert($entity, $revision)
+    public function revert(&$entity, $revision)
     {
         /** @var ClassMetadataInfo $meta */
         $meta = $this->getClassMetadata(get_class($entity));
 
-        $data = $this->getRevisionData($entity, ['revisionId' => $revision], 1);
+        $data = $this->getRevisionData($entity, ['revision_id = :revisionId'], ['revisionId' => $revision], 1);
 
         /** @var \ReflectionProperty[] $revisedProperties */
         $revisedProperties = $this->annotationReader->getRevisedProperties($entity);
@@ -105,7 +126,7 @@ class RevisionManager
      */
     public function getDraftRevision($entity)
     {
-        $data = $this->getRevisionData($entity, ['draft' => true], 1);
+        $data = $this->getRevisionData($entity, ['draft = :draft'], ['draft' => true], 1);
 
         return ($data) ? $data['revision_id'] : null;
     }
@@ -123,25 +144,25 @@ class RevisionManager
     }
 
 
-    protected function getRevisionData($entity, $criteria = array(), $limit = false)
+    protected function getRevisionData($entity, $criteria = array(), $params = array(), $limit = false)
     {
         $class = $this->getClassMetadata(get_class($entity));
 
-        $where = array();
-        $params = array();
+        $i = 0;
         foreach ($class->getIdentifierFieldNames() as $fieldName) {
-            $where[] = 'r.'.$class->getColumnName($fieldName) . ' = ?';
-            $params[] = $class->getFieldValue($entity, $fieldName);
+            $i++;
+            $criteria[] = 'r.'.$class->getColumnName($fieldName) . ' = :id'.$i;
+            $params['id'.$i] = $class->getFieldValue($entity, $fieldName);
         }
-
-        foreach ($criteria as $fieldName => $value) {
-            $where[] = $class->getColumnName($fieldName).' = ?';
-            $params[] = $value;
-        }
+//
+//        foreach ($criteria as $fieldName => $value) {
+//            $criteria[] = $class->getColumnName($fieldName);
+//            $params[] = $value;
+//        }
 
         $sql = 'SELECT * FROM ' . $class->getTableName() . '_revisions r';
         $sql .= ' INNER JOIN revisions rv ON r.revision_id = rv.id';
-        $sql .= ' WHERE ' . implode(' AND ', $where);
+        $sql .= ' WHERE ' . implode(' AND ', $criteria);
         $sql .= ' ORDER BY r.revision_id DESC ';
 
         if ($limit) {

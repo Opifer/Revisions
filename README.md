@@ -1,8 +1,7 @@
+[![Build Status](https://travis-ci.org/Opifer/Revisions.svg?branch=master)](https://travis-ci.org/Opifer/Revisions)
 
 Revisions
 ==========
-
-
 
 
 ## Revision Entity example:
