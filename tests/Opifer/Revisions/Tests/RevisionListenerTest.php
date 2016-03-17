@@ -116,4 +116,25 @@ class RevisionListenerTest extends AbstractTest
 
         $this->assertEquals($car->getSeats(), $persistedCar->getSeats(), "Update on drafted entity should only have it's update persisted to the revisions table");
     }
+
+    public function testDraftDelete()
+    {
+        $car = new Car();
+        $car->setLicensePlate('AB-123-C');
+        $car->setSeats(5);
+        $this->em->persist($car);
+        $this->em->flush();
+
+        $carId = $car->getId();
+
+        $car->setDraft(true);
+        $this->em->remove($car);
+        $this->em->flush();
+
+        $this->em->detach($car); // clear cache
+
+        $persistedCar = $this->em->getRepository('Opifer\Revisions\Tests\Entity\Vehicle')->find($carId);
+
+        $this->assertNull($persistedCar->getDeletedAt());
+    }
 }

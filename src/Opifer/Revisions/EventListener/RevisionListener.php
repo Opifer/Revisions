@@ -309,10 +309,12 @@ class RevisionListener implements EventSubscriber
                 $this->em->getConnection()->executeQuery($sql, $params, $types);
             }
         }
-//
-//        foreach ($this->insertDrafts as $hash => $entity) {
-//            $this->em->detach($entity);
-//        }
+
+        foreach ($this->insertDrafts as $hash => $entity) {
+            if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
+                $this->em->detach($entity);
+            }
+        }
     }
 
     /**
