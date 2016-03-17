@@ -53,7 +53,12 @@ class RevisionManager
 
         // Exclude "future" draft revisions
         if ($this->annotationReader->isDraft($entity)) {
-            $criteria[] = 'updated_at <= :updatedAt';
+            if ($entity->getDeletedAt() !== null) {
+                $criteria[] = 'updated_at <= :updatedAt AND deleted_at <= :deletedAt';
+                $params['deletedAt'] = $entity->getDeletedAt();
+            } else {
+                $criteria[] = 'updated_at <= :updatedAt AND deleted_at IS NULL';
+            }
             $params['updatedAt'] = $entity->getUpdatedAt() ? $entity->getUpdatedAt()->format("Y-m-d H:i:s") : null;
         }
 

@@ -214,11 +214,14 @@ class RevisionListener implements EventSubscriber
                 $oldValue = $reflProp->getValue($entity);
                 $reflProp->setValue($entity, null);
 
-                $this->em->persist($entity);
 
                 $this->uow->scheduleExtraUpdate($entity, array(
                     $fieldName => array($oldValue, null),
                 ));
+            }
+
+            if (isset($this->softDeletes[spl_object_hash($entity)])) {
+                $this->em->persist($entity);
             }
         }
 
