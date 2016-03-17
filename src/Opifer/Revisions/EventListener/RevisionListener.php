@@ -161,32 +161,8 @@ class RevisionListener implements EventSubscriber
         $this->em = $eventArgs->getEntityManager();
         $this->uow = $this->em->getUnitOfWork();
 
+        // this will ensure our handling in onFlush scheduled deletes will execute
         $this->uow->remove($entity);
-
-        if ($this->annotationReader->isRevised(get_class($entity)) &&
-            $this->annotationReader->isDraft($entity) &&
-            $entity->isDraft()) {
-
-            $this->setRevisionInfo($entity);
-
-            $this->extraUpdates[spl_object_hash($entity)] = $entity;
-
-            $persister = $this->uow->getEntityPersister(get_class($entity));
-            $this->updateData[spl_object_hash($entity)] = $this->prepareUpdateData($persister, $entity);
-
-            $fieldName = 'deletedAt';
-            $reflProp = new \ReflectionProperty($entity, $fieldName);
-            $reflProp->setAccessible(true);
-            $oldValue = $reflProp->getValue($entity);
-            $reflProp->setValue($entity, null);
-
-            $this->em->persist($entity);
-
-            $this->uow->scheduleExtraUpdate($entity, array(
-                $fieldName => array($oldValue, null),
-            ));
-
-        }
     }
 
     public function onFlush(OnFlushEventArgs $eventArgs)
@@ -214,16 +190,35 @@ class RevisionListener implements EventSubscriber
 
             $processedEntities[] = $hash;
 
+            $this->extraUpdates[spl_object_hash($entity)] = $entity;
+
+            $persister = $this->uow->getEntityPersister(get_class($entity));
+            $this->updateData[spl_object_hash($entity)] =  $this->prepareUpdateData($persister, $entity);
+
+            $entityData = array_merge($this->getOriginalEntityData($entity), $this->uow->getEntityIdentifier($entity));
+            $this->saveRevisionEntityData($this->em->getClassMetadata(get_class($entity)), $entityData, 'DEL');
+
             if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
                 $this->resetRevisedData($entity);
-            } else {
+
+                $this->setRevisionInfo($entity);
+
                 $this->extraUpdates[spl_object_hash($entity)] = $entity;
 
                 $persister = $this->uow->getEntityPersister(get_class($entity));
-                $this->updateData[spl_object_hash($entity)] =  $this->prepareUpdateData($persister, $entity);
+                $this->updateData[spl_object_hash($entity)] = $this->prepareUpdateData($persister, $entity);
 
-                $entityData = array_merge($this->getOriginalEntityData($entity), $this->uow->getEntityIdentifier($entity));
-                $this->saveRevisionEntityData($this->em->getClassMetadata(get_class($entity)), $entityData, 'DEL');
+                $fieldName = 'deletedAt';
+                $reflProp = new \ReflectionProperty($entity, $fieldName);
+                $reflProp->setAccessible(true);
+                $oldValue = $reflProp->getValue($entity);
+                $reflProp->setValue($entity, null);
+
+                $this->em->persist($entity);
+
+                $this->uow->scheduleExtraUpdate($entity, array(
+                    $fieldName => array($oldValue, null),
+                ));
             }
         }
 

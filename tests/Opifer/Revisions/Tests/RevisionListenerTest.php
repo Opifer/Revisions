@@ -133,6 +133,8 @@ class RevisionListenerTest extends AbstractTest
 
         $this->em->detach($car); // clear cache
 
+        $this->assertEquals(2, count($this->em->getConnection()->fetchAll('SELECT id FROM opifer_vehicle_revisions WHERE id = "'.$carId.'"')));
+
         $persistedCar = $this->em->getRepository('Opifer\Revisions\Tests\Entity\Vehicle')->find($carId);
 
         $this->assertNull($persistedCar->getDeletedAt());
