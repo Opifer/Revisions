@@ -78,6 +78,9 @@ class RevisionListener implements EventSubscriber
     /** @var array */
     protected $insertDrafts = array();
 
+    /** @var array */
+    protected $softDeletes = array();
+
     public function __construct(ContainerInterface $container, AnnotationReader $annotationReader)
     {
         $this->container = $container;
@@ -86,7 +89,7 @@ class RevisionListener implements EventSubscriber
 
     public function getSubscribedEvents()
     {
-        return array(Events::onFlush, Events::postPersist, Events::postUpdate, Events::postFlush, SoftDeleteableListener::POST_SOFT_DELETE);
+        return array(Events::onFlush, Events::postPersist, Events::postUpdate, Events::postFlush, SoftDeleteableListener::PRE_SOFT_DELETE, SoftDeleteableListener::POST_SOFT_DELETE);
     }
 
     public function postPersist(LifecycleEventArgs $eventArgs)
@@ -131,36 +134,49 @@ class RevisionListener implements EventSubscriber
      *
      * @param LifecycleEventArgs $eventArgs
      */
+    public function preSoftDelete(LifecycleEventArgs $eventArgs)
+    {
+        $entity = $eventArgs->getEntity();
+        $this->em = $eventArgs->getEntityManager();
+        $this->uow = $this->em->getUnitOfWork();
+
+        $fieldName = 'deletedAt';
+        $reflProp = new \ReflectionProperty($entity, $fieldName);
+        $reflProp->setAccessible(true);
+        $oldValue = $reflProp->getValue($entity);
+
+        if ($oldValue === null) {
+            $this->softDeletes[spl_object_hash($entity)] = $entity;
+        }
+    }
+
+
+        /**
+     * TODO: set deletedAt field through reflection and loading softdeletable config
+     *
+     * @param LifecycleEventArgs $eventArgs
+     */
     public function postSoftDelete(LifecycleEventArgs $eventArgs) {
         $entity = $eventArgs->getEntity();
         $this->em = $eventArgs->getEntityManager();
         $this->uow = $this->em->getUnitOfWork();
 
-        if ($this->annotationReader->isRevised(get_class($entity), true) &&
+        $this->uow->remove($entity);
+
+        if ($this->annotationReader->isRevised(get_class($entity)) &&
             $this->annotationReader->isDraft($entity) &&
             $entity->isDraft()) {
 
             $this->setRevisionInfo($entity);
 
-            $this->extraUpdates[spl_object_hash($entity)] = $entity;
-
-            $persister = $this->uow->getEntityPersister(get_class($entity));
-            $this->updateData[spl_object_hash($entity)] = $this->prepareUpdateData($persister, $entity);
-
             $fieldName = 'deletedAt';
-
             $reflProp = new \ReflectionProperty($entity, $fieldName);
             $reflProp->setAccessible(true);
-
-            $oldValue = $reflProp->getValue($entity);
             $reflProp->setValue($entity, null);
 
             $this->em->persist($entity);
 
-            $this->uow->scheduleExtraUpdate($entity, array(
-                $fieldName => array($oldValue, null),
-            ));
-
+            $this->uow->scheduleForUpdate($entity);
         }
     }
 
@@ -378,7 +394,7 @@ class RevisionListener implements EventSubscriber
         if (! isset($this->revisionSQL[$meta->name])) {
             $placeholders = ['?', '?'];
             $values = ['revision_id', 'rev_type'];
-            $updates = array();
+            $updates = ['rev_type'];
             $tableName = $this->getTableName($meta);
 
             $fields = array();
@@ -436,9 +452,9 @@ class RevisionListener implements EventSubscriber
 
             $sql = "INSERT INTO " . $tableName . " (".implode(", ", $values);
             $sql .= ") VALUES (" . implode(", ", $placeholders) . ")";
-//            $sql .= " ON DUPLICATE KEY UPDATE ";
-//            array_walk($updates, function (&$value) { $value = sprintf("%s=VALUES(%s)", $value, $value); });
-//            $sql .= implode(", ", $updates);
+            $sql .= " ON DUPLICATE KEY UPDATE ";
+            array_walk($updates, function (&$value) { $value = sprintf("%s=VALUES(%s)", $value, $value); });
+            $sql .= implode(", ", $updates);
 
             $this->revisionSQL[$meta->name] = $sql;
         }

@@ -135,6 +135,6 @@ class RevisionListenerTest extends AbstractTest
 
         $persistedCar = $this->em->getRepository('Opifer\Revisions\Tests\Entity\Vehicle')->find($carId);
 
-        $this->assertNull($persistedCar->getDeletedAt());
+        $this->assertNotNull($persistedCar->getDeletedAt());
     }
 }
