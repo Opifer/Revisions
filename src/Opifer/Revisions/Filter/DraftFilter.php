@@ -32,10 +32,10 @@ class DraftFilter extends SQLFilter
         $annotationReader = $this->getListener()->getAnnotationReader();
 
         if (!$annotationReader->isDraft($targetEntity->getName())) {
-            return;
+            return "";
         }
 
-        // Check if the entity implements the LocalAware interface
+        // Check if the entity implements the DraftInterface interface
         if (!$targetEntity->reflClass->implementsInterface('Opifer\Revisions\DraftInterface')) {
             return "";
         }
