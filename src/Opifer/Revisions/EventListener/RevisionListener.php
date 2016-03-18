@@ -203,8 +203,6 @@ class RevisionListener implements EventSubscriber
 
                 $this->setRevisionInfo($entity);
 
-                $this->extraUpdates[spl_object_hash($entity)] = $entity;
-
                 $persister = $this->uow->getEntityPersister(get_class($entity));
                 $this->updateData[spl_object_hash($entity)] = $this->prepareUpdateData($persister, $entity);
 
@@ -331,13 +329,21 @@ class RevisionListener implements EventSubscriber
 
                 $this->em->getConnection()->executeQuery($sql, $params, $types);
             }
+
+            // We've resetted draft entities to their state before so nothing gets overwritten
+            // in the original table. Now set values back to what it was for use in the rest
+            // of the application.
+            if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
+                $this->restoreRevisedData($entity, $updateData);
+            }
+
         }
 
-        foreach ($this->insertDrafts as $hash => $entity) {
-            if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
-                $this->em->detach($entity);
-            }
-        }
+//        foreach ($this->insertDrafts as $hash => $entity) {
+//            if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
+//                $this->em->detach($entity);
+//            }
+//        }
     }
 
     /**
@@ -681,6 +687,28 @@ class RevisionListener implements EventSubscriber
             }
 
             $value = $changes[0];
+            $property = $meta->getReflectionProperty($field);
+            $property->setValue($object, $value);
+        }
+    }
+
+
+    protected function restoreRevisedData($object, $updateData)
+    {
+        $meta   = $this->em->getClassMetadata(get_class($object));
+
+        /** @var \ReflectionProperty[] $revisedProperties */
+        $revisedProperties = $this->annotationReader->getRevisedProperties($object);
+
+        if (! isset($updateData[$meta->table['name']]) || ! $updateData[$meta->table['name']]) {
+            return;
+        }
+
+        foreach ($updateData[$meta->table['name']] as $field => $value) {
+            if (! key_exists($field, $revisedProperties)) {
+                continue;
+            }
+
             $property = $meta->getReflectionProperty($field);
             $property->setValue($object, $value);
         }

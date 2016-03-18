@@ -91,6 +91,8 @@ class RevisionListenerTest extends AbstractTest
         $this->em->persist($car);
         $this->em->flush();
 
+        $this->assertEquals(5, $car->getSeats(), "Draft entity state is changed after insert");
+
         $carId = $car->getId();
 
         $this->em->detach($car); // clear cache otherwise draftfilter wont do its work
@@ -109,12 +111,14 @@ class RevisionListenerTest extends AbstractTest
         $car->setSeats(7);
         $this->em->flush();
 
+        $this->assertEquals(7, $car->getSeats(), "Draft entity state is changed after update");
+
         $carId = $car->getId();
 
         $this->em->detach($car); // clear cache
         $persistedCar = $this->em->getRepository('Opifer\Revisions\Tests\Entity\Vehicle')->find($carId);
 
-        $this->assertEquals($car->getSeats(), $persistedCar->getSeats(), "Update on drafted entity should only have it's update persisted to the revisions table");
+        $this->assertEquals(5, $persistedCar->getSeats(), "Update on drafted entity should only have it's update persisted to the revisions table");
     }
 
     public function testDraftDelete()
