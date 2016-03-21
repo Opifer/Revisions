@@ -704,14 +704,35 @@ class RevisionListener implements EventSubscriber
             return;
         }
 
-        foreach ($updateData[$meta->table['name']] as $field => $value) {
+        foreach ($updateData[$meta->table['name']] as $column => $value) {
+            $field = $meta->getFieldForColumn($column);
             if (! key_exists($field, $revisedProperties)) {
                 continue;
             }
 
+            $this->mapValue($meta, $field, $value);
+
             $property = $meta->getReflectionProperty($field);
             $property->setValue($object, $value);
         }
+    }
+
+
+    /**
+     * Maps ids of associations to references
+     *
+     * @param ClassMetadata $class
+     * @param string        $field
+     * @param mixed         $value
+     */
+    protected function mapValue(ClassMetadata $class, $field, &$value)
+    {
+        if (!$class->isSingleValuedAssociation($field)) {
+            return;
+        }
+
+        $mapping = $class->getAssociationMapping($field);
+        $value   = $value ? $this->em->getReference($mapping['targetEntity'], $value) : null;
     }
 
     /**
