@@ -679,16 +679,17 @@ class RevisionListener implements EventSubscriber
 
         if (isset($this->insertDrafts[spl_object_hash($object)])) {
             $object->setCreatedAt(null);
-        }
+            $object->setUpdatedAt(null);
+        } else {
+            foreach ($uow->getEntityChangeSet($object) as $field => $changes) {
+                if (!key_exists($field, $revisedProperties)) {
+                    continue;
+                }
 
-        foreach ($uow->getEntityChangeSet($object) as $field => $changes) {
-            if (! key_exists($field, $revisedProperties)) {
-                continue;
+                $value = $changes[0];
+                $property = $meta->getReflectionProperty($field);
+                $property->setValue($object, $value);
             }
-
-            $value = $changes[0];
-            $property = $meta->getReflectionProperty($field);
-            $property->setValue($object, $value);
         }
     }
 

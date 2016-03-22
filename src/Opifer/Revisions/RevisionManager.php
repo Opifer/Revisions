@@ -218,7 +218,7 @@ class RevisionManager
      */
     protected function getClassMetadata($className)
     {
-        $class = $this->em->getClassMetadata($className);
+        $class = clone $this->em->getClassMetadata($className);
 
         if (! isset($class->fieldMappings['revisionId'])) {
             $revisionMapping = [

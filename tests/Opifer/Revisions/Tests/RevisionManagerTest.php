@@ -108,6 +108,8 @@ class RevisionManagerTest extends AbstractTest
         $car->setDraft(true);
         $this->em->flush();
 
+        $this->revisionManager->revert($car, 3);
+
         $this->assertEquals(3, $this->revisionManager->getCurrentRevision($car));
     }
 }
