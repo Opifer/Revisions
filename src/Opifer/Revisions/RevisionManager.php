@@ -53,13 +53,7 @@ class RevisionManager
 
         // Exclude "future" draft revisions
         if ($this->annotationReader->isDraft($entity)) {
-            if ($entity->getDeletedAt() !== null) {
-                $criteria[] = 'updated_at <= :updatedAt AND deleted_at <= :deletedAt';
-                $params['deletedAt'] = $entity->getDeletedAt();
-            } else {
-                $criteria[] = 'updated_at <= :updatedAt AND deleted_at IS NULL';
-            }
-            $params['updatedAt'] = $entity->getUpdatedAt() ? $entity->getUpdatedAt()->format("Y-m-d H:i:s") : null;
+            $criteria[] = '(r.updated_at <= e.updated_at OR (e.created_at IS NULL AND r.rev_type = "INS") OR (e.deleted_at IS NOT NULL AND r.deleted_at <= e.deleted_at))';
         }
 
         $current = $this->getRevisionData($entity, $criteria, $params, 1);
@@ -134,7 +128,6 @@ class RevisionManager
         $currentRevision = $this->getCurrentRevision($entity);
         $latestRevision = $this->getLatestRevision($entity);
 
-
         return ($currentRevision < $latestRevision) ? $latestRevision : null;
     }
 
@@ -167,7 +160,8 @@ class RevisionManager
 //            $params[] = $value;
 //        }
 
-        $sql = 'SELECT * FROM ' . $class->getTableName() . '_revisions r';
+        $sql = 'SELECT r.* FROM ' . $class->getTableName() . '_revisions r';
+        $sql .= ' INNER JOIN ' . $class->getTableName() . ' e ON r.id = e.id';
         $sql .= ' INNER JOIN revisions rv ON r.revision_id = rv.id';
         $sql .= ' WHERE ' . implode(' AND ', $criteria);
         $sql .= ' ORDER BY r.revision_id DESC ';
