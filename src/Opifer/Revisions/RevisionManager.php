@@ -53,7 +53,7 @@ class RevisionManager
 
         // Exclude "future" draft revisions
         if ($this->annotationReader->isDraft($entity)) {
-            $criteria[] = '(r.updated_at <= e.updated_at OR (e.created_at IS NULL AND r.rev_type = "INS") OR (e.deleted_at IS NOT NULL AND r.deleted_at <= e.deleted_at))';
+            $criteria[] = '((r.updated_at <= e.updated_at AND r.deleted_at IS NULL) OR (e.created_at IS NULL AND e.created_at IS NOT NULL) OR (e.deleted_at IS NOT NULL AND r.deleted_at <= e.updated_at))';
         }
 
         $current = $this->getRevisionData($entity, $criteria, $params, 1);
