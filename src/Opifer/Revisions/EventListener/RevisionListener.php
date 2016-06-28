@@ -82,6 +82,9 @@ class RevisionListener implements EventSubscriber
     /** @var array */
     protected $softDeletes = array();
 
+    /** @var array */
+    protected $updateData = array();
+
     public function __construct(ContainerInterface $container, AnnotationReader $annotationReader)
     {
         $this->container = $container;
@@ -168,6 +171,8 @@ class RevisionListener implements EventSubscriber
 
     public function onFlush(OnFlushEventArgs $eventArgs)
     {
+        // Clear updateData
+        $this->updateData = $this->extraUpdates = array();
         $this->em = $eventArgs->getEntityManager();
         $this->conn = $this->em->getConnection();
         $this->uow = $this->em->getUnitOfWork();
@@ -331,7 +336,7 @@ class RevisionListener implements EventSubscriber
                 $this->em->getConnection()->executeQuery($sql, $params, $types);
             }
 
-            // We've resetted draft entities to their state before so nothing gets overwritten
+            // We've reset draft entities to their state before so nothing gets overwritten
             // in the original table. Now set values back to what it was for use in the rest
             // of the application.
             if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
@@ -339,6 +344,9 @@ class RevisionListener implements EventSubscriber
             }
 
         }
+
+        // Clear updateData
+        $this->updateData = $this->extraUpdates = array();
 
 //        foreach ($this->insertDrafts as $hash => $entity) {
 //            if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
