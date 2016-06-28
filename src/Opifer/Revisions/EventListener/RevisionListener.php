@@ -11,6 +11,7 @@ use Doctrine\ORM\Event\LifecycleEventArgs;
 use Doctrine\ORM\Event\OnFlushEventArgs;
 use Doctrine\ORM\Event\PostFlushEventArgs;
 use Doctrine\ORM\Events;
+use Doctrine\ORM\Mapping\DefaultQuoteStrategy;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Persisters\Entity\BasicEntityPersister;
 use Doctrine\ORM\Persisters\Entity\EntityPersister;
@@ -451,8 +452,9 @@ class RevisionListener implements EventSubscriber
                 $placeholders[] = (! empty($meta->fieldMappings[$field]['requireSQLConversion']))
                     ? $type->convertToDatabaseValueSQL('?', $this->platform)
                     : '?';
-                $values[] = $meta->getQuotedColumnName($field, $this->platform);
-                $updates[] = $meta->getQuotedColumnName($field, $this->platform);
+                $quoteStrategy = new DefaultQuoteStrategy();
+                $values[] = $quoteStrategy->getColumnName($field, $meta, $this->platform);
+                $updates[] = $quoteStrategy->getColumnName($field, $meta, $this->platform);
             }
 
             if (($meta->isInheritanceTypeJoined() && $meta->rootEntityName == $meta->name)
