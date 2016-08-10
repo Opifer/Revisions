@@ -184,7 +184,7 @@ class RevisionListener implements EventSubscriber
     public function onFlush(OnFlushEventArgs $eventArgs)
     {
         // Clear updateData
-        // $this->updateData = $this->extraUpdates = array();
+        $this->updateData = $this->extraUpdates = array();
         $this->em = $eventArgs->getEntityManager();
         $this->conn = $this->em->getConnection();
         $this->uow = $this->em->getUnitOfWork();
@@ -281,7 +281,7 @@ class RevisionListener implements EventSubscriber
     public function postFlush(PostFlushEventArgs $eventArgs)
     {
         if (! $this->active) return;
-        
+
         $em = $eventArgs->getEntityManager();
 
         foreach ($this->extraUpdates as $entity) {
@@ -360,7 +360,7 @@ class RevisionListener implements EventSubscriber
         }
 
         // Clear updateData
-        // $this->updateData = $this->extraUpdates = array();
+        $this->updateData = $this->extraUpdates = array();
 
 //        foreach ($this->insertDrafts as $hash => $entity) {
 //            if ($this->annotationReader->isDraft($entity) && $entity->isDraft()) {
