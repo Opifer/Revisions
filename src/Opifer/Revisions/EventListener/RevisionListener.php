@@ -183,6 +183,8 @@ class RevisionListener implements EventSubscriber
 
     public function onFlush(OnFlushEventArgs $eventArgs)
     {
+        if (! $this->active) return;
+        
         // Clear updateData
         $this->updateData = $this->extraUpdates = array();
         $this->em = $eventArgs->getEntityManager();
