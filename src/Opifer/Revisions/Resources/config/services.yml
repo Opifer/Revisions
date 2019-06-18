@@ -18,6 +18,7 @@ services:
     opifer.revisions.revision_listener:
         class: Opifer\Revisions\EventListener\RevisionListener
         arguments: ['@service_container', '@opifer.revisions.annotation_reader']
+        public: true
         tags:
             - { name: 'doctrine.event_subscriber', priority: 10 } # should handle events after gedmo timestample does
 
