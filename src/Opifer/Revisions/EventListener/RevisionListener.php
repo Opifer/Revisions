@@ -16,7 +16,6 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Persisters\Entity\BasicEntityPersister;
 use Doctrine\ORM\Persisters\Entity\EntityPersister;
 use Doctrine\ORM\UnitOfWork;
-use Gedmo\SoftDeleteable\SoftDeleteableListener;
 use Opifer\Revisions\Mapping\AnnotationReader;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -96,7 +95,17 @@ class RevisionListener implements EventSubscriber
 
     public function getSubscribedEvents()
     {
-        return array(Events::onFlush, Events::postPersist, Events::postUpdate, Events::postFlush, SoftDeleteableListener::PRE_SOFT_DELETE, SoftDeleteableListener::POST_SOFT_DELETE);
+        $events = array(
+            Events::onFlush,
+            Events::postPersist,
+            Events::postUpdate,
+            Events::postFlush,
+        );
+        if (class_exists('\\Gedmo\\SoftDeleteable\\SoftDeleteableListener')) {
+            $events[] = \Gedmo\SoftDeleteable\SoftDeleteableListener::PRE_SOFT_DELETE;
+            $events[] = \Gedmo\SoftDeleteable\SoftDeleteableListener::POST_SOFT_DELETE;
+        }
+        return $events;
     }
 
     public function postPersist(LifecycleEventArgs $eventArgs)
@@ -169,7 +178,7 @@ class RevisionListener implements EventSubscriber
      *
      * @param LifecycleEventArgs $eventArgs
      */
-    public function postSoftDelete(LifecycleEventArgs $eventArgs) 
+    public function postSoftDelete(LifecycleEventArgs $eventArgs)
     {
         if (! $this->active) return;
 
@@ -184,7 +193,7 @@ class RevisionListener implements EventSubscriber
     public function onFlush(OnFlushEventArgs $eventArgs)
     {
         if (! $this->active) return;
-        
+
         // Clear updateData
         $this->updateData = $this->extraUpdates = array();
         $this->em = $eventArgs->getEntityManager();
