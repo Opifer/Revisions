@@ -15,6 +15,7 @@
     "doctrine/doctrine-bundle": "~1.4"
   },
   "require-dev": {
+    "gedmo/doctrine-extensions": "~2.4",
     "phpunit/phpunit": "~4.2.0",
     "mockery/mockery": "~0.9",
     "symfony/phpunit-bridge": "~2.7"
