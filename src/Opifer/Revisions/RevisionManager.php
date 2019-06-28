@@ -2,12 +2,12 @@
 
 namespace Opifer\Revisions;
 
+use Doctrine\DBAL\Types\Type;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadataInfo;
-use Doctrine\DBAL\Types\Type;
 use Opifer\Revisions\Exception\DeletedException;
 use Opifer\Revisions\Mapping\AnnotationReader;
-use Opifer\Revisions\Mapping\RevisionMetadata;
+use Opifer\Revisions\Model\Revision;
 
 class RevisionManager
 {
@@ -36,9 +36,10 @@ class RevisionManager
      */
     public function getLatestRevision($entity)
     {
-        $latest = $this->getRevisionData($entity, [], [], 1);
+        $result = $this->getRevisionData($entity, [], [], 1);
 
-        if ($latest) {
+        if ($result) {
+            $latest = reset($result);
             return $latest['revision_id'];
         }
 
@@ -56,9 +57,10 @@ class RevisionManager
             $criteria[] = '((r.updated_at <= e.updated_at AND r.deleted_at IS NULL) OR (e.created_at IS NULL AND e.created_at IS NOT NULL) OR (e.deleted_at IS NOT NULL AND r.deleted_at <= e.updated_at))';
         }
 
-        $current = $this->getRevisionData($entity, $criteria, $params, 1);
+        $result = $this->getRevisionData($entity, $criteria, $params, 1);
 
-        if ($current) {
+        if ($result) {
+            $current = reset($result);
             return $current['revision_id'];
         }
 
@@ -79,9 +81,25 @@ class RevisionManager
         $meta = $this->getClassMetadata(get_class($entity));
 
         $data = $this->getRevisionData($entity, ['revision_id = :revisionId'], ['revisionId' => $revision], 1);
+        if (!$data) {
+            throw new \InvalidArgumentException(sprintf('Revision with id %d not found for entity %s', $revision, get_class($entity)));
+        }
 
+        $this->fillObject($entity, $meta, reset($data));
+
+        if ($meta->getReflectionClass()->hasMethod('getDeletedAt') && $entity->getDeletedAt() !== null) {
+            $exception = new DeletedException('Entity is deleted in this revision');
+            $exception->setEntity($entity);
+            throw $exception;
+        }
+
+        return $entity;
+    }
+
+    protected function fillObject(&$object, ClassMetadataInfo $meta, $data)
+    {
         /** @var \ReflectionProperty[] $revisedProperties */
-        $revisedProperties = $this->annotationReader->getRevisedProperties($entity);
+        $revisedProperties = $this->annotationReader->getRevisedProperties($meta->getName());
 
         $exception = null;
         foreach ($revisedProperties as $field => $property) {
@@ -100,19 +118,8 @@ class RevisionManager
             $value = $data[$columnName];
 
             $property = $meta->getReflectionProperty($field);
-            $property->setValue($entity, $value);
-
-            if ($field == 'deletedAt' && $value !== null) {
-                $exception = new DeletedException('Entity is deleted in this revision');
-            }
+            $property->setValue($object, $value);
         }
-
-        if ($exception) {
-            $exception->setEntity($entity);
-            throw $exception;
-        }
-
-        return $entity;
     }
 
     /**
@@ -170,20 +177,39 @@ class RevisionManager
             $sql .= ' LIMIT 0,' . $limit;
         }
 
-        $row = $this->em->getConnection()->fetchAssoc($sql, $params);
+        $rows = $this->em->getConnection()->fetchAll($sql, $params);
 
-        if (!$row) {
+        if (!$rows) {
             return false;
         }
-        foreach ($row as $column => &$value) {
-            try {
-                $this->mapValue($class, $class->getFieldForColumn($column), $value);
-            } catch (\Exception $e) {
-                continue;
+        foreach ($rows as &$row) {
+            $row = (array) $row;
+            foreach ($row as $column => &$value) {
+                try {
+                    $this->mapValue($class, $class->getFieldForColumn($column), $value);
+                } catch (\Exception $e) {
+                    continue;
+                }
             }
         }
 
-        return $row;
+        return $rows;
+    }
+
+    public function getRevisions($entity, $criteria = array(), $params = array(), $limit = false)
+    {
+        $result = $this->getRevisionData($entity, $criteria, $params, $limit);
+        /** @var ClassMetadataInfo $meta */
+        $meta = $this->getClassMetadata(get_class($entity));
+        $revisions  = array();
+        foreach ($result as $row) {
+          $object = new \stdClass();
+          $object->revision_id = $row['revision_id'];
+          $object->rev_type = $row['rev_type'];
+          $this->fillObject($object, $meta, $row);
+          $revisions[] = new Revision($object, $entity);
+        }
+        return $revisions;
     }
 
 
