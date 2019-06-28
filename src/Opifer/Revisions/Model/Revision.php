@@ -48,11 +48,15 @@ class Revision
     {
         $property = lcfirst(substr($name, 3));
         if (strpos($name, 'get') === 0 && $this->reflection->hasMethod($name) && $this->reflection->hasProperty($property)) {
-            return isset($this->data[$property]) ? $this->data[$property] : call_user_func_array([$this->entity, $name], $arguments);
+            return isset($this->data[$property])
+                ? $this->data[$property]
+                : call_user_func_array([$this->entity, $name], $arguments);
         }
         // Support twig.
         elseif ($this->reflection->hasProperty($name)) {
-            return isset($this->data[$name]) ? $this->data[$name] : call_user_func_array([$this->entity, 'get' . ucfirst($name)], $arguments);
+            return isset($this->data[$name])
+                ? $this->data[$name]
+                : call_user_func_array([$this->entity, 'get' . ucfirst($name)], $arguments);
         }
         trigger_error('Call to undefined method '.__CLASS__.'::'.$name.'()', E_USER_ERROR);
     }
