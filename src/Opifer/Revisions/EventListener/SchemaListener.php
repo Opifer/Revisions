@@ -132,7 +132,12 @@ class SchemaListener implements EventSubscriber
 
                     try {
                         $propertyName = $subClassMeta->getFieldForColumn($columnName);
-                        return $this->annotationReader->isPropertyRevised($subClassMeta->name, $propertyName);
+                        if ($this->annotationReader->isPropertyRevised($subClassMeta->name, $propertyName)) {
+                            // If the given property is revised on this subclass, we return true.
+                            // If not, we go on to the next subclass to see if that maybe has marked the given
+                            // property as `revised`
+                            return true;
+                        }
                     } catch (MappingException $e) {
                     }
                 }
